@@ -4,18 +4,19 @@ import {
   AlertOctagon, AlertTriangle, CheckCircle2, TrendingUp, Droplet,
   Gauge, Weight, Clock, Activity, MessageSquare, Flag, Radio,
   Filter, FlaskConical, X, Pill, Sparkles, Zap, Watch, Heart, Brain,
-  SlidersHorizontal,
+  SlidersHorizontal, ShieldCheck, Loader2, Siren,
 } from 'lucide-react';
 import {
   DoctorPatient, SimParams, Archetype, TriageRisk, ClinicalNote,
   ExerciseTiming, TriageFilter, SortField, AnomalyDetection,
   ChatMessage, Prescription, HandoffNote, HandoffTask, AuditEntry,
   CareTeamMember, SpecialistRole, AIDConfig, AutotuningRecommendation,
+  CrisisAlert, SafetyCheckResult,
 } from '@/lib/types';
 import {
   filterAndSortPatients, getArchetypeByIdSync, ANOMALIES, CARE_TEAM,
 } from '@/lib/doctorData';
-import { generateGlucoseCurve, computePeak, classifyRisk, computeCGMMetrics, computeEarlyWarning, computeAutotuningRecommendations, DEFAULT_AID_CONFIG } from '@/lib/glucoseEngine';
+import { generateGlucoseCurve, computePeak, classifyRisk, computeCGMMetrics, computeEarlyWarning, computeAutotuningRecommendations, DEFAULT_AID_CONFIG, generateSBARSummary, checkPlanSafety } from '@/lib/glucoseEngine';
 import { GlucoseChart } from '@/components/GlucoseChart';
 import { CGMMetricsPanel } from '@/components/CGMMetricsPanel';
 import { AGPModal } from '@/components/AGPModal';
@@ -50,6 +51,8 @@ interface DoctorDashboardProps {
   autotuningRecs: AutotuningRecommendation[];
   onApplyAutotuning: (rec: AutotuningRecommendation, newConfig: AIDConfig) => void;
   onDismissAutotuning: (recId: string, note: string) => void;
+  crisisAlert: CrisisAlert | null;
+  onDispatchHypoProtocol: (patientId: string) => void;
 }
 
 const CURRENT_AUTHOR: CareTeamMember = CARE_TEAM[0];
@@ -76,6 +79,7 @@ export function DoctorDashboard({
   onAddNote, onPushPlan, onSendChat, onAddPrescription, onToggleFlag, onBroadcastTip,
   onAddHandoffNote, onAssignTask, onToggleTask, onSaveAidConfig,
   autotuningRecs, onApplyAutotuning, onDismissAutotuning,
+  crisisAlert, onDispatchHypoProtocol,
 }: DoctorDashboardProps) {
   const { showToast } = useToast();
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -90,8 +94,20 @@ export function DoctorDashboard({
   const [showPrescription, setShowPrescription] = useState(false);
   const [broadcastOpen, setBroadcastOpen] = useState(false);
   const [broadcastTip, setBroadcastTip] = useState('');
+  const [generatingSummary, setGeneratingSummary] = useState(false);
+  const [safetyCheck, setSafetyCheck] = useState<SafetyCheckResult | null>(null);
 
-  const filteredSorted = useMemo(() => filterAndSortPatients(patients, filter, sort), [patients, filter, sort]);
+  const filteredSorted = useMemo(() => {
+    const base = filterAndSortPatients(patients, filter, sort);
+    if (crisisAlert) {
+      return [...base].sort((a, b) => {
+        if (a.id === crisisAlert.patientId) return -1;
+        if (b.id === crisisAlert.patientId) return 1;
+        return 0;
+      });
+    }
+    return base;
+  }, [patients, filter, sort, crisisAlert]);
   const selected = patients.find((p) => p.id === selectedId) ?? null;
 
   const selectedArchetype: Archetype = getArchetypeByIdSync(draftArchetypeId);
@@ -124,9 +140,38 @@ export function DoctorDashboard({
 
   const handlePushPlan = () => {
     if (!selected) return;
+    const result = checkPlanSafety(draftParams, selected);
+    setSafetyCheck(result);
+    if (result.status === 'warning') {
+      showToast('Safety check flagged conflicts — review before sending', 'warning');
+      return;
+    }
     const latestRx = patientPrescriptions[patientPrescriptions.length - 1];
     onPushPlan(selected.id, { ...draftParams }, draftArchetypeId, noteText || 'Plan adjusted by clinician', latestRx);
     showToast(`Prescription successfully synced to ${selected.name}'s digital twin`, 'success');
+    setSafetyCheck(null);
+  };
+
+  const handleConfirmPushPlan = () => {
+    if (!selected) return;
+    const latestRx = patientPrescriptions[patientPrescriptions.length - 1];
+    onPushPlan(selected.id, { ...draftParams }, draftArchetypeId, noteText || 'Plan adjusted by clinician', latestRx);
+    showToast(`Prescription successfully synced to ${selected.name}'s digital twin`, 'success');
+    setSafetyCheck(null);
+  };
+
+  const handleGenerateSummary = () => {
+    if (!selected) return;
+    setGeneratingSummary(true);
+    setTimeout(() => {
+      const arch = getArchetypeByIdSync(selected.archetypeId);
+      const ew = earlyWarnings[selected.id];
+      const sbar = generateSBARSummary(selected, draftCGM, ew);
+      const sbarText = `[SBAR Auto-Generated Clinical Summary]\n\nS — Situation:\n${sbar.situation}\n\nB — Background:\n${sbar.background}\n\nA — Assessment:\n${sbar.assessment}\n\nR — Recommendation:\n${sbar.recommendation}`;
+      setNoteText(sbarText);
+      setGeneratingSummary(false);
+      showToast('AI clinical summary generated in SBAR format', 'success');
+    }, 1500);
   };
 
   const handleAddNote = () => {
@@ -214,6 +259,12 @@ export function DoctorDashboard({
           onSavePrescription={handleSavePrescription}
           showPrescription={showPrescription}
           earlyWarning={earlyWarnings[selected.id]}
+          crisisAlert={crisisAlert}
+          onDispatchHypoProtocol={onDispatchHypoProtocol}
+          generatingSummary={generatingSummary}
+          onGenerateSummary={handleGenerateSummary}
+          safetyCheck={safetyCheck}
+          onConfirmPushPlan={handleConfirmPushPlan}
           handoffNotes={handoffNotes}
           tasks={tasks}
           auditEntries={auditEntries}
@@ -315,6 +366,7 @@ export function DoctorDashboard({
                 const pAnomalies = ANOMALIES.filter(a => a.patientId === p.id);
                 const ew = earlyWarnings[p.id];
                 const isPreCrisis = ew && (ew.level === 'high' || ew.level === 'critical');
+                const isCrisisPatient = crisisAlert && crisisAlert.patientId === p.id;
                 return (
                   <tr key={p.id} onClick={() => handleSelectPatient(p)}
                     className="cursor-pointer border-b border-slate-100 transition-colors hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50">
@@ -444,6 +496,12 @@ interface PatientDetailViewProps {
   onSavePrescription: (rx: Omit<Prescription, 'id' | 'createdAt'>) => void;
   showPrescription: boolean;
   earlyWarning: ReturnType<typeof computeEarlyWarning>;
+  crisisAlert: CrisisAlert | null;
+  onDispatchHypoProtocol: (patientId: string) => void;
+  generatingSummary: boolean;
+  onGenerateSummary: () => void;
+  safetyCheck: SafetyCheckResult | null;
+  onConfirmPushPlan: () => void;
   handoffNotes: HandoffNote[];
   tasks: HandoffTask[];
   auditEntries: AuditEntry[];
@@ -461,9 +519,12 @@ function PatientDetailView({
   draftPeak, draftCurve, draftCGM, noteText, setNoteText, patientNotes,
   patientPrescriptions, onAddNote, onPushPlan, onToggleFlag, onOpenAGP, onOpenTrial,
   onOpenMessaging, onTogglePrescription, onSavePrescription, showPrescription,
-  earlyWarning, handoffNotes, tasks, auditEntries,
+  earlyWarning, crisisAlert, onDispatchHypoProtocol, generatingSummary, onGenerateSummary,
+  safetyCheck, onConfirmPushPlan, handoffNotes, tasks, auditEntries,
   onAddHandoffNote, onAssignTask, onToggleTask, onSaveAidConfig,
   autotuningRecs, onApplyAutotuning, onDismissAutotuning,
+  crisisAlert, onDispatchHypoProtocol, generatingSummary, onGenerateSummary,
+  safetyCheck, onConfirmPushPlan,
 }: PatientDetailViewProps) {
   const origCurve = useMemo(() => generateGlucoseCurve(patient.params, getArchetypeByIdSync(patient.archetypeId)), [patient]);
   const origCGM = useMemo(() => computeCGMMetrics(origCurve), [origCurve]);
@@ -576,8 +637,27 @@ function PatientDetailView({
         )}
       </div>
 
+      {/* Crisis Alert Banner */}
+      {crisisAlert && crisisAlert.patientId === patient.id && (
+        <div className="flex items-center gap-3 rounded-2xl border-2 border-red-300 bg-red-50 p-4 dark:border-red-800 dark:bg-red-950/30">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-500 text-white animate-pulse">
+            <Siren className="h-5 w-5" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-bold text-red-700 dark:text-red-400">ACTIVE CRISIS: {crisisAlert.glucose} mg/dL</p>
+            <p className="text-xs text-red-600 dark:text-red-500">Severe nocturnal hypoglycemia detected — immediate intervention required</p>
+          </div>
+          <button
+            onClick={() => onDispatchHypoProtocol(patient.id)}
+            className="flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-bold text-white shadow-lg transition-colors hover:bg-red-700"
+          >
+            <Siren className="h-4 w-4" /> Dispatch Urgent Hypo Protocol
+          </button>
+        </div>
+      )}
+
       {/* Early Warning Indicator */}
-      <EarlyWarningIndicator prediction={earlyWarning} />
+      <EarlyWarningIndicator prediction={earlyWarning} xaiParams={draftParams} xaiArchetype={getArchetypeByIdSync(patient.archetypeId)} />
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <GlucoseChart data={draftCurve} dark={dark} compareMode={false} />
@@ -643,6 +723,29 @@ function PatientDetailView({
             <div className="mt-1.5 flex items-center justify-between text-xs"><span className="text-slate-500 dark:text-slate-400">vs. Current</span><span className={`font-bold tabular-nums ${peakDelta < 0 ? 'text-emerald-600 dark:text-emerald-400' : peakDelta > 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-500'}`}>{peakDelta > 0 ? '+' : ''}{peakDelta} mg/dL</span></div>
             <div className="mt-1.5 flex items-center justify-between text-xs"><span className="text-slate-500 dark:text-slate-400">TIR Delta</span><span className={`font-bold tabular-nums ${tirDelta > 0 ? 'text-emerald-600 dark:text-emerald-400' : tirDelta < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-500'}`}>{tirDelta > 0 ? '+' : ''}{tirDelta}%</span></div>
           </div>
+          {/* Safety check badge */}
+          {safetyCheck && safetyCheck.status === 'verified' && (
+            <div className="mt-4 flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 dark:border-emerald-800 dark:bg-emerald-950/30">
+              <ShieldCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+              <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400">Safety Verified by Twin Clinical Rule Engine</span>
+            </div>
+          )}
+          {safetyCheck && safetyCheck.status === 'warning' && (
+            <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/30">
+              <div className="mb-2 flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                <span className="text-xs font-bold text-amber-700 dark:text-amber-400">Safety Conflicts Detected</span>
+              </div>
+              <ul className="mb-3 space-y-1">
+                {safetyCheck.messages.map((msg, i) => (
+                  <li key={i} className="text-xs text-amber-600 dark:text-amber-500">• {msg}</li>
+                ))}
+              </ul>
+              <button onClick={onConfirmPushPlan} className="flex w-full items-center justify-center gap-2 rounded-lg border border-amber-300 bg-amber-100 py-2 text-xs font-semibold text-amber-800 transition-colors hover:bg-amber-200 dark:border-amber-700 dark:bg-amber-900/40 dark:text-amber-400">
+                <Send className="h-3.5 w-3.5" /> Acknowledge & Push Anyway
+              </button>
+            </div>
+          )}
           <button onClick={onPushPlan} className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600 py-2.5 text-sm font-semibold text-white shadow-md transition-all hover:from-blue-600 hover:to-indigo-700">
             <Send className="h-4 w-4" /> Push Plan to Patient
           </button>
@@ -671,6 +774,14 @@ function PatientDetailView({
             <div className="mb-3 flex items-center gap-2">
               <StickyNote className="h-4 w-4 text-teal-600 dark:text-teal-400" />
               <h3 className="text-sm font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">Clinical Notes &amp; Recommendations</h3>
+              <button
+                onClick={onGenerateSummary}
+                disabled={generatingSummary}
+                className="ml-auto flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-violet-500 to-fuchsia-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-all hover:from-violet-600 hover:to-fuchsia-700 disabled:opacity-60"
+              >
+                {generatingSummary ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                Generate AI Clinical Summary
+              </button>
             </div>
             <textarea value={noteText} onChange={e => setNoteText(e.target.value)}
               placeholder="Add a timestamped clinical note..." rows={3}

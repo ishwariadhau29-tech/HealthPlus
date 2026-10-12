@@ -13,6 +13,14 @@ import {
   AIDConfig,
   DoctorPatient,
   AutotuningRecommendation,
+  MealMacroAnalysis,
+  MealPreset,
+  XaiAttribution,
+  CGMStreamMode,
+  CGMLiveReading,
+  SBARSummary,
+  SafetyCheckResult,
+  CalibrationPoint,
 } from './types';
 
 const MEAL_TIMES = [8, 13, 19];
@@ -551,4 +559,120 @@ export function computeAutotuningRecommendations(patient: DoctorPatient): Autotu
   }
 
   return recommendations;
+}
+
+export const MEAL_PRESETS: MealPreset[] = [
+  { id: 'pasta', label: 'High-Carb Pasta Bowl', description: 'Spaghetti with marinara sauce', macros: { carbs: 72, protein: 18, fat: 12, fiber: 6, calories: 480, label: 'High-Carb Pasta Bowl' } },
+  { id: 'keto', label: 'Keto Salmon Salad', description: 'Grilled salmon with avocado salad', macros: { carbs: 8, protein: 35, fat: 28, fiber: 7, calories: 420, label: 'Keto Salmon Salad' } },
+  { id: 'burger', label: 'Fast Food Burger & Fries', description: 'Cheeseburger with french fries', macros: { carbs: 55, protein: 25, fat: 32, fiber: 4, calories: 650, label: 'Fast Food Burger & Fries' } },
+];
+
+export function analyzeMealMacros(input: { carbs: number; protein: number; fat: number; fiber: number; calories: number; label: string }): MealMacroAnalysis {
+  return {
+    carbs: Math.max(0, Math.min(100, Math.round(input.carbs))),
+    protein: Math.max(0, Math.min(60, Math.round(input.protein))),
+    fat: Math.max(0, Math.min(50, Math.round(input.fat))),
+    fiber: Math.max(0, Math.round(input.fiber)),
+    calories: Math.max(0, Math.round(input.calories)),
+    label: input.label,
+  };
+}
+
+export function computeXaiAttribution(params: SimParams, peak: number, archetype: Archetype): XaiAttribution[] {
+  const carbs = params.carbs_g;
+  const mealLoad = Math.round((carbs / 45) * 38 * archetype.resistanceFactor);
+
+  const sleepDeficit = params.sleep_hrs < 7 ? Math.round(((7 - params.sleep_hrs) / 3) * 14 * archetype.resistanceFactor) : 0;
+
+  const walkEffectiveness = params.exercise_timing === 'after' ? 1.0 : 1 / 2.2;
+  const walkImpact = -Math.round(Math.min(1, params.walk_mins / 30) * 22 * walkEffectiveness);
+
+  const baselineIsfDrift = Math.round((archetype.resistanceFactor - 1.0) * 6 + (params.protein_g < 15 ? 4 : 0));
+
+  return [
+    { label: 'Meal Glycemic Load', impact: mealLoad, color: 'red' },
+    { label: 'Circadian / Sleep Deficit', impact: sleepDeficit, color: 'amber' },
+    { label: 'Post-Meal Walk / Activity', impact: walkImpact, color: 'green' },
+    { label: 'Baseline ISF Drift', impact: baselineIsfDrift, color: 'gray' },
+  ];
+}
+
+export function computeCalibrationCurve(archetype: Archetype): CalibrationPoint[] {
+  const points: CalibrationPoint[] = [];
+  const baseIsf = 50 / archetype.resistanceFactor;
+  const baseIcr = 10 * archetype.resistanceFactor;
+  for (let day = 0; day < 14; day++) {
+    const noise = Math.sin(day * 0.7) * 2.5 + Math.cos(day * 1.3) * 1.8;
+    const trend = day * 0.15;
+    points.push({
+      day: day + 1,
+      isf: Math.round((baseIsf + noise - trend) * 10) / 10,
+      icr: Math.round((baseIcr + noise * 0.3 + trend * 0.1) * 10) / 10,
+    });
+  }
+  return points;
+}
+
+export function getCalibrationFidelity(archetype: Archetype): number {
+  return Math.round((92 + (1.3 - archetype.resistanceFactor) * 5) * 10) / 10;
+}
+
+const CGM_SCENARIO_CONFIG: Record<Exclude<CGMStreamMode, 'off'>, { base: number; variance: number; trend: number }> = {
+  stable: { base: 110, variance: 8, trend: 0 },
+  spike: { base: 185, variance: 12, trend: 1.5 },
+  hypo: { base: 48, variance: 4, trend: -2.0 },
+};
+
+export function generateCGMReading(mode: Exclude<CGMStreamMode, 'off'>, tick: number): CGMLiveReading {
+  const cfg = CGM_SCENARIO_CONFIG[mode];
+  const noise = (Math.random() - 0.5) * cfg.variance;
+  const drift = cfg.trend * Math.sin(tick * 0.3) * 3;
+  const value = Math.round(Math.max(40, Math.min(300, cfg.base + noise + drift)));
+  const trend = value > cfg.base + 3 ? 'rising' : value < cfg.base - 3 ? 'falling' : 'stable';
+  return { value, trend, timestamp: new Date().toISOString() };
+}
+
+export function generateSBARSummary(
+  patient: DoctorPatient,
+  cgmMetrics: CGMMetrics,
+  earlyWarning: EarlyWarningPrediction,
+): SBARSummary {
+  const postPrandialPattern = patient.history.filter(h => h.projected_peak_mgdl > 140).length > 0
+    ? `Excursion trends detected during post-prandial windows — ${patient.history.filter(h => h.projected_peak_mgdl > 140).length} of ${patient.history.length} recent simulations peaked above 140 mg/dL.`
+    : 'Glucose excursions well-controlled across recent simulation history.';
+
+  const situation = postPrandialPattern;
+  const background = `${patient.name}, ${patient.age} yrs, ${patient.diabetesType}. HbA1c ${patient.hba1c}%, baseline TIR ${patient.tir}%, fasting glucose ${patient.fastingGlucose} mg/dL. Current 4h forecast: ${earlyWarning.projectedGlucose} mg/dL (${earlyWarning.trend}).`;
+  const assessment = `Contributing factors from recent meal simulation history: average carbohydrate intake ${Math.round(patient.history.reduce((a, h) => a + h.carbs_g, 0) / Math.max(1, patient.history.length))}g, average post-meal walk ${Math.round(patient.history.reduce((a, h) => a + h.walk_mins, 0) / Math.max(1, patient.history.length))} min, average sleep ${Math.round(patient.history.reduce((a, h) => a + h.sleep_hrs, 0) / Math.max(1, patient.history.length) * 10) / 10} hrs. CGM metrics: mean ${cgmMetrics.meanGlucose} mg/dL, CV ${cgmMetrics.cv}%, eA1c ${cgmMetrics.ea1c}%.`;
+  const recommendation = `Suggested adjustments: ${cgmMetrics.tir < 70 ? 'reduce next-meal carbohydrates by 10-15g and extend post-meal walk to 20+ min.' : 'maintain current carbohydrate load; consider shifting exercise timing to post-meal for 2.2x GLUT4 clearance benefit.'} ${earlyWarning.hypoRisk > 30 ? 'Verify basal rate and consider preemptive 15g fast-acting carb reserve.' : ''} Sleep target: minimum 7 hrs to prevent insulin resistance cascade.`;
+
+  return { situation, background, assessment, recommendation };
+}
+
+export function checkPlanSafety(params: SimParams, patient: DoctorPatient): SafetyCheckResult {
+  const messages: string[] = [];
+  if (params.carbs_g > 80 && patient.diabetesType === 'Type 1 (AID)') {
+    messages.push('Carbohydrate threshold exceeds 80g for insulin-dependent patient — risk of post-prandial excursion despite correction bolus coverage.');
+  }
+  if (params.carbs_g > 90 && (patient.diabetesType === 'Type 2 (GLP-1)' || patient.diabetesType === 'LADA')) {
+    messages.push('High carb load may exceed GLP-1 receptor agonist capacity for glucose disposal.');
+  }
+  if (params.sleep_hrs < 5) {
+    messages.push('Sleep target below 5 hrs violates metabolic safety guidelines — insulin resistance increases ~28% with acute sleep deprivation.');
+  }
+  if (params.walk_mins === 0 && params.carbs_g > 60) {
+    messages.push('No post-meal activity prescribed with high carbohydrate load — consider minimum 15-min walk.');
+  }
+  return {
+    status: messages.length === 0 ? 'verified' : 'warning',
+    messages,
+  };
+}
+
+export function getWalkDampeningEffect(currentWalk: number, archetype: Archetype): number {
+  const walkEff = 1.0; // post-meal
+  const currentSuppression = Math.min(1, currentWalk / 30) * 28 * walkEff;
+  const targetWalk = Math.max(currentWalk, 15);
+  const targetSuppression = Math.min(1, targetWalk / 30) * 28 * walkEff;
+  return Math.round(targetSuppression - currentSuppression);
 }

@@ -308,3 +308,68 @@ export interface AutotuningRecommendation {
   createdAt: string;
   resolvedAt: string | null;
 }
+
+export interface MealMacroAnalysis {
+  carbs: number;
+  protein: number;
+  fat: number;
+  fiber: number;
+  calories: number;
+  label: string;
+}
+
+export type MealPresetId = 'pasta' | 'keto' | 'burger';
+
+export interface MealPreset {
+  id: MealPresetId;
+  label: string;
+  description: string;
+  macros: MealMacroAnalysis;
+}
+
+export interface XaiAttribution {
+  label: string;
+  impact: number;
+  color: 'red' | 'amber' | 'green' | 'gray';
+}
+
+export type CGMStreamMode = 'off' | 'stable' | 'spike' | 'hypo';
+
+export interface CGMLiveReading {
+  value: number;
+  trend: 'rising' | 'falling' | 'stable';
+  timestamp: string;
+}
+
+export type CrisisStatus = 'none' | 'active';
+
+export interface CrisisAlert {
+  patientId: string;
+  glucose: number;
+  timestamp: string;
+  status: CrisisStatus;
+}
+
+export interface SBARSummary {
+  situation: string;
+  background: string;
+  assessment: string;
+  recommendation: string;
+}
+
+export type SafetyCheckStatus = 'verified' | 'warning';
+
+export interface SafetyCheckResult {
+  status: SafetyCheckStatus;
+  messages: string[];
+}
+
+export interface CalibrationPoint {
+  day: number;
+  isf: number;
+  icr: number;
+}
+
+export interface ArchitectureModalTab {
+  id: 'data-flow' | 'clinical-impact';
+}

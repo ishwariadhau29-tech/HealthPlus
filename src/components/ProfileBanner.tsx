@@ -1,9 +1,15 @@
 import { useState } from 'react';
-import { User, Ruler, Weight, Droplet, Gauge, Pencil, Save, X, Loader2 } from 'lucide-react';
+import { User, Ruler, Weight, Droplet, Gauge, Pencil, Save, X, Loader2, Activity } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { Profile } from '@/lib/types';
+import { Profile, Archetype } from '@/lib/types';
+import { getCalibrationFidelity } from '@/lib/glucoseEngine';
 
-export function ProfileBanner() {
+interface ProfileBannerProps {
+  archetype?: Archetype;
+  onOpenCalibration?: () => void;
+}
+
+export function ProfileBanner({ archetype, onOpenCalibration }: ProfileBannerProps) {
   const { profile, updateProfile, isDemo, isConfigured } = useAuth();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -119,6 +125,21 @@ export function ProfileBanner() {
           );
         })}
       </div>
+
+      {/* Twin Calibration badge */}
+      {archetype && onOpenCalibration && (
+        <button
+          onClick={onOpenCalibration}
+          className="mt-3 flex w-full items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-left transition-colors hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/30 dark:hover:bg-emerald-950/50"
+        >
+          <Activity className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+          <div className="flex-1">
+            <span className="text-sm font-bold text-emerald-700 dark:text-emerald-400">Twin Calibration: Adaptive</span>
+            <span className="ml-2 text-xs text-emerald-600/70 dark:text-emerald-400/70">{getCalibrationFidelity(archetype)}% Fidelity</span>
+          </div>
+          <span className="text-xs font-medium text-emerald-600/70 dark:text-emerald-400/70">View drift curve →</span>
+        </button>
+      )}
 
       {!isConfigured && !isDemo && (
         <p className="mt-3 text-xs text-slate-400">

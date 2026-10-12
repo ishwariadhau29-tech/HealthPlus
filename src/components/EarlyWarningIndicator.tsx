@@ -1,5 +1,6 @@
 import { Zap, TrendingUp, TrendingDown, Minus } from 'lucide-react';
-import { EarlyWarningPrediction, EarlyWarningLevel } from '@/lib/types';
+import { EarlyWarningPrediction, EarlyWarningLevel, SimParams, Archetype } from '@/lib/types';
+import { XaiAttributionCard } from '@/components/XaiAttributionCard';
 
 const LEVEL_CONFIG: Record<EarlyWarningLevel, { label: string; color: string; bg: string; border: string; pulse: boolean }> = {
   low: { label: 'Low Risk', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/30', border: 'border-emerald-200 dark:border-emerald-800', pulse: false },
@@ -8,7 +9,7 @@ const LEVEL_CONFIG: Record<EarlyWarningLevel, { label: string; color: string; bg
   critical: { label: 'Pre-Crisis Critical', color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-950/30', border: 'border-red-200 dark:border-red-800', pulse: true },
 };
 
-export function EarlyWarningIndicator({ prediction, compact }: { prediction: EarlyWarningPrediction; compact?: boolean }) {
+export function EarlyWarningIndicator({ prediction, compact, xaiParams, xaiArchetype }: { prediction: EarlyWarningPrediction; compact?: boolean; xaiParams?: SimParams; xaiArchetype?: Archetype }) {
   const cfg = LEVEL_CONFIG[prediction.level];
   const TrendIcon = prediction.trend === 'rising' ? TrendingUp : prediction.trend === 'falling' ? TrendingDown : Minus;
 
@@ -56,6 +57,12 @@ export function EarlyWarningIndicator({ prediction, compact }: { prediction: Ear
           <span className={`font-bold tabular-nums ${prediction.acceleration > 0 ? 'text-orange-600 dark:text-orange-400' : prediction.acceleration < 0 ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500'}`}>{prediction.acceleration > 0 ? '+' : ''}{prediction.acceleration}</span>
         </div>
       </div>
+
+      {xaiParams && xaiArchetype && (
+        <div className="mt-3">
+          <XaiAttributionCard params={xaiParams} peak={prediction.projectedGlucose} archetype={xaiArchetype} />
+        </div>
+      )}
     </div>
   );
 }
