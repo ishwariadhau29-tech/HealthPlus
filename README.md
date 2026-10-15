@@ -1,6 +1,5 @@
 # HealthPlus — GlucoTwin
 
-> **Note on naming:** The GitHub repository is named **HealthPlus**. The application itself is called **GlucoTwin** — a metabolic and glucose control digital twin. Both names refer to this project.
 
 **Hackathon Demo · Educational, Not Medical Advice**
 
@@ -40,7 +39,13 @@
 | Aditi Dange | [linkedin.com/in/aditi-dange-1a8585369](https://www.linkedin.com/in/aditi-dange-1a8585369) |
 | Dhanshri Zade | [linkedin.com/in/dhanshri-zade-a6480a401](https://www.linkedin.com/in/dhanshri-zade-a6480a401) |
 
-> **TODO:** Add individual roles (e.g. Full-Stack Dev, UI/UX, Simulation Logic) once confirmed by the team.
+**Team Name:** HackNova
+
+| Member | Role | LinkedIn |
+|---|---|---|
+| Ishwari Adhau | Project Lead & Frontend Developer | [LinkedIn](https://www.linkedin.com/in/ishwari-adhau-6b222b404) |
+| Aditi Dange | Backend Developer & API Integration | [LinkedIn](https://www.linkedin.com/in/aditi-dange-1a8585369) |
+| Dhanshri Zade | Healthcare Data Analysis & Simulation Logic | [LinkedIn](https://www.linkedin.com/in/dhanshri-zade-a6480a401) |
 
 ---
 
@@ -269,7 +274,7 @@ User inputs → React interface → Glucose simulation → Trend visualisation �
 5. **Clinician portal** reads demo patients from `doctorData.ts` (localStorage-persisted). SBAR summaries and early-warning predictions are computed client-side from the same engine.
 6. **Plan push** creates a `PatientPlanNotification` in React state; the patient-side modal presents it for acceptance.
 
-> The architecture diagram image provided by the team is referenced in the [Architecture Diagram](#architecture-diagram) section below. A PDF/PPT version is pending.
+
 
 ---
 
@@ -465,10 +470,11 @@ Watch the project demonstration video here:
 
 ## 18. Open-Source License
 
-> ⚖️ **LICENSE PENDING**
-> The team has not yet selected an open-source license for this repository. A LICENSE file will be added once a license is chosen.
-> This repository is currently **not explicitly licensed**. Until a license is added, standard copyright law applies.
+> ⚖️ **LICENSE: MIT**
 
+This project is licensed under the MIT License. You are free to use, copy, modify, merge, publish, distribute, sublicense, and sell copies of the software, subject to the terms and conditions of the license.
+
+See the [LICENSE](LICENSE) file for the complete license terms.
 ---
 
 ## 19. Submission Checklist
