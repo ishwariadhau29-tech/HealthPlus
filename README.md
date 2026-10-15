@@ -53,15 +53,16 @@ Department of Information Technology
 ---
 
 ## 3. Hackathon
+## Digital Twin Challenge 2026
 
 | Field | Detail |
 |---|---|
-| Event | [Digital Twin Challenge 2026](https://unstop.com/hackathons/crp-digital-twin-challenge-2026-happiest-health-1757873) |
-
-| Format | National, online, 30-hour hackathon |
-| Dates | 4 Oct – 5 Oct 2026 |
-| Track | **Open Innovation** → Healthcare operations |
-| Prize pool | ₹50,000 cash + PPO opportunities for top 3 teams |
+| Event | [Digital Twin Challenge 2026 – Happiest Health](https://unstop.com/hackathons/crp-digital-twin-challenge-2026-happiest-health-1757873) |
+| Format | National-level healthcare challenge |
+| Mode | Online |
+| Track | Healthcare Digital Twin |
+| Project | HealthPlus |
+| Team Size | 1–4 members |
 
 ---
 
