@@ -424,17 +424,10 @@ Watch the project demonstration video here:
   
 ### Architecture Diagram
 
-> 📐 **TODO — PDF/PPT LINK PENDING**
-> A PDF or PPT version of the system architecture diagram is required for submission.
-> The architecture image used in this README was shared by the team as a static image; a hosted PDF/PPT artifact is still outstanding.
-> _To be added by the team before final submission._
-
+[📄 View Architecture PDF](https://github.com/ishwariadhau29-tech/HealthPlus/blob/main/Architecture.pdf)
 ### Project Presentation
 
 > 📊 **TODO — PDF/PPT LINK PENDING**
-> A PDF or PPT presentation covering project details and outcomes is required for submission.
-> The presentation shown in the attached document (9 slides) covers: project title, problem scale, what GlucoTwin is, the product loop, how the twin works, history and continuity, shown vs. to-validate, and the hackathon ask.
-> _A publicly accessible hosted link (Google Drive, GitHub release, etc.) is to be added by the team before final submission._
 
 ---
 
