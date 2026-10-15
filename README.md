@@ -56,8 +56,8 @@ Department of Information Technology
 
 | Field | Detail |
 |---|---|
-| Event | [WCC Launchpad 30](https://wecodecoders.in/events/wcc-launchpad-30) |
-| Organiser | We Code Coders (WCC) |
+| Event | [Digital Twin Challenge 2026](https://unstop.com/hackathons/crp-digital-twin-challenge-2026-happiest-health-1757873) |
+
 | Format | National, online, 30-hour hackathon |
 | Dates | 4 Oct – 5 Oct 2026 |
 | Track | **Open Innovation** → Healthcare operations |
@@ -415,10 +415,13 @@ Suggested judge walkthrough (≈ 10 minutes):
 
 ### Demo Video
 
-> 📹 **TODO — LINK PENDING**
-> A 15–20 minute unlisted YouTube video demonstrating the full prototype workflow for hackathon judges.
-> _To be added by the team before final submission._
+🎥 Project Demo
 
+Watch the project demonstration video here:
+
+"▶️ Click here to watch the video" (https://1drv.ms/v/c/a2c46c9f5caf6bfb/IQA6pQY9E3kjTo0rcZ6rRLs6AQe8p6G7FTD9hRS-CCZQpAE?e=yT53Bx)
+
+  
 ### Architecture Diagram
 
 > 📐 **TODO — PDF/PPT LINK PENDING**
