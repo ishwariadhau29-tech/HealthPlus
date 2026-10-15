@@ -425,9 +425,12 @@ Watch the project demonstration video here:
 ### Architecture Diagram
 
 [📄 View Architecture PDF](https://github.com/ishwariadhau29-tech/HealthPlus/blob/main/Architecture.pdf)
+
+
 ### Project Presentation
 
-> 📊 **TODO — PDF/PPT LINK PENDING**
+[📄 View Overall Project PDF](https://github.com/ishwariadhau29-tech/HealthPlus/blob/main/overall.pdf)
+
 
 ---
 
