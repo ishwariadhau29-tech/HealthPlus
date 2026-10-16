@@ -477,28 +477,6 @@ This project is licensed under the MIT License. You are free to use, copy, modif
 See the [LICENSE](LICENSE) file for the complete license terms.
 ---
 
-## 19. Submission Checklist
-
-Use this checklist to track submission completeness. Items marked **⬜ Pending** must be resolved before the submission can be considered complete.
-
-### Mandatory hackathon requirements
-
-| # | Requirement | Status |
-|---|---|---|
-| 1 | Team name and member list with profile links | ✅ Complete |
-| 2 | Individual member roles | ⬜ Pending — to be added by team |
-| 3 | College / institution name and department | ✅ Complete |
-| 4 | Project title | ✅ Complete |
-| 5 | Problem statement | ✅ Complete |
-| 6 | Healthcare use case with user types and workflow | ✅ Complete |
-| 7 | Technical stack with purpose of each technology | ✅ Complete |
-| 8 | AI/ML model or framework description | ✅ Complete (simulation engine described accurately) |
-| 9 | Demo video — 15–20 min unlisted YouTube link | ⬜ Pending — link not yet provided |
-| 10 | Open-source license | ⬜ Pending — license not yet selected |
-| 11 | Architecture diagram — PDF or PPT link | ⬜ Pending — hosted link not yet provided |
-| 12 | Project presentation — PDF or PPT link | ⬜ Pending — hosted link not yet provided |
-| 13 | Accessibility checklist — all files and links publicly accessible without additional permissions | ⬜ Pending — cannot confirm until all links are provided |
-
 ### Verified technical content
 
 | Item | Verified |
@@ -512,10 +490,5 @@ Use this checklist to track submission completeness. Items marked **⬜ Pending*
 | Unsupported clinical numbers (34%, 98.2%, 90s) omitted | ✅ |
 | No real patient data or credentials included | ✅ |
 
----
-
-> **⚠️ This README is a working draft. It is not submission-ready until all ⬜ Pending items in the checklist above are resolved.**
-
----
 
 *GlucoTwin is an educational healthcare prototype. It does not constitute medical advice. Always consult a qualified healthcare provider for clinical decisions.*
